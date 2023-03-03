@@ -21,8 +21,6 @@ int main() {
         std::cout << "$ ";
         std::cin.getline(input, MAX_COMMAND_LENGTH);
         
-        // std::cout << input;
-
        if (strcmp(input, "myexit") == 0) {
             exit(EXIT_SUCCESS);
         }
@@ -46,10 +44,9 @@ int main() {
             }
             continue;
         }
-        else if (getchar() == EOF) {
+        else if (std::cin.eof()) {
             exit(EXIT_SUCCESS);
         }
-        
 
         // tokenize the input into separate commands
         char *token = strtok(input, "|");
@@ -74,7 +71,6 @@ int main() {
             }
             commands[i] = command;
         }
-
         execute_pipeline(commands, n_commands);
     }
     return 0;
@@ -168,29 +164,5 @@ void execute_pipeline(char *commands[], int n_commands) {
         }
 
         i++;
-    }
-}
-void timeout(int seconds, char* command) {
-    pid_t pid;
-    int status;
-
-    pid = fork();
-    if (pid < 0) {
-        std::cout << "Failed to fork" << std::endl;
-        exit(1);
-    } else if (pid == 0) {
-        // Child process
-        execl("/bin/sh", "sh", "-c", command, (char*)0);
-        std::cout << "Failed to execute command: " << command << std::endl;
-        exit(1);
-    } else {
-        // Parent process
-        sleep(seconds);
-        if (kill(pid, 0) == 0) {
-            // Child process is still running
-            kill(pid, SIGTERM);
-            std::cout << "Process terminated after timeout of " << seconds << " seconds" << std::endl;
-        }
-        wait(&status);
     }
 }
