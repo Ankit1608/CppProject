@@ -6,60 +6,129 @@
 #include <fcntl.h>
 #include <signal.h>
 
+using namespace std;
+
 #define MAX_COMMANDS 10
 #define MAX_COMMAND_LENGTH 80
 #define MAX_PIPE_COMMANDS 10
 
 void execute_pipeline(char *commands[], int n_commands);
 
-int main() {
-    char *commands[MAX_COMMANDS];
-    char input[MAX_COMMAND_LENGTH];
-    int i, j;
+char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH]);
 
-    while (true) {
-        std::cout << "$ ";
-        std::cin.getline(input, MAX_COMMAND_LENGTH);
+char** removeExtraWhiteSpaces(char *commands[], int numberOfCommands);
+
+int getNumberOfCommands(char commandInput[MAX_COMMAND_LENGTH]);
+
+int numberOfCommands=0;
+
+int main() {
+    char** commands = new char*[MAX_COMMANDS];
+    char commandInput[MAX_COMMAND_LENGTH];
+    int i,j;
+
+    X:
+        cout << "$ ";
+        cin.getline(commandInput, MAX_COMMAND_LENGTH);
         
-       if (strcmp(input, "myexit") == 0) {
+       if (strcmp(commandInput, "myexit") == 0) {
             exit(EXIT_SUCCESS);
         }
-        else if (strcmp(input, "mypwd") == 0) {
+        else if (strcmp(commandInput, "mypwd") == 0) {
             char cwd[1024];
             if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-                std::cout << cwd << std::endl;
+                cout << cwd << endl;
             } else {
                 perror("getcwd() error");
             }
-            continue;
+            goto X;
         }
-        else if (strncmp(input, "mycd", 4) == 0) {
-            char *path = strtok(input + 4, " \n\r");
+        else if (strncmp(commandInput, "mycd", 4) == 0) {
+            char *path = strtok(commandInput + 4, " \n\r");
             if (path == NULL) {
-                std::cerr << "mycd: missing argument\n";
-                continue;
+                cerr << "mycd: missing argument\n";
+                goto X;
             }
             if (chdir(path) != 0) {
                 perror("mycd");
             }
-            continue;
+            goto X;
         }
-        else if (std::cin.eof()) {
+        else if (cin.eof()) {
             exit(EXIT_SUCCESS);
         }
 
-        // tokenize the input into separate commands
-        char *token = strtok(input, "|");
-        i = 0;
+        
+
+        commands = getSeperateCommands(commandInput);
+
+
+        
+        
+        
+
+        for (i = 0; i < numberOfCommands; i++) {
+            char *command = commands[i];
+            while (*command == ' ') {
+                command++;
+            }
+            j = strlen(command) - 1;
+            while (command[j] == '\n' || command[j] == '\r' || command[j] == ' ') {
+                command[j] = '\0';
+                j--;
+            }
+            commands[i] = command;
+            
+        }
+
+        // commands = removeExtraWhiteSpaces(commands,numberOfCommands);
+
+        execute_pipeline(commands, numberOfCommands);
+
+    goto X;
+
+    return 0;
+}
+
+char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH])
+{
+    // get seperate commands from the given Input
+    char** commands = new char*[MAX_COMMANDS];
+    char *token = strtok(commandInput, "|");
+        int i = 0;
         while (token != nullptr) {
             commands[i] = token;
             i++;
             token = strtok(nullptr, "|");
+            
         }
-        int n_commands = i;
+        numberOfCommands = i;
+        return commands;
 
-        // trim leading and trailing whitespace from each command
-        for (i = 0; i < n_commands; i++) {
+}
+
+int getNumberOfCommands(char commandInput[MAX_COMMAND_LENGTH])
+{
+    // get number of commands with respect to | in the given input
+    char** commands = new char*[MAX_COMMANDS];
+    char *token = strtok(commandInput, "|");
+        int i = 0;
+        while (token != nullptr) {
+            commands[i] = token;
+            i++;
+            cout<<" -- i -- "<<i<<"       ";
+            token = strtok(nullptr, "|");
+            
+        }
+        return i;
+
+}
+
+char** removeExtraWhiteSpaces(char *commands[],int numberOfCommands)
+{
+    int j;
+    //removing extra white spaces from the commands
+    for (int i = 0; i < numberOfCommands; i++) {
             char *command = commands[i];
             while (*command == ' ') {
                 command++;
@@ -71,9 +140,7 @@ int main() {
             }
             commands[i] = command;
         }
-        execute_pipeline(commands, n_commands);
-    }
-    return 0;
+        return commands;
 }
 
 void execute_pipeline(char *commands[], int n_commands) {
