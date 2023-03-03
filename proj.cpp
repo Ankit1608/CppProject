@@ -12,7 +12,7 @@ using namespace std;
 #define MAX_COMMAND_LENGTH 80
 #define MAX_PIPE_COMMANDS 10
 
-void execute_pipeline(char *commands[]);
+void runPipeCommands(char *commands[]);
 
 char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH]);
 
@@ -60,7 +60,8 @@ int main() {
         
         commands = getSeperateCommands(commandInput);
 
-        execute_pipeline(commands);
+        runPipeCommands
+    (commands);
 
     goto X;
 
@@ -128,7 +129,7 @@ char** removeExtraWhiteSpaces(char** commands)
 }
 
 
-void execute_pipeline(char *commands[]) {
+void runPipeCommands(char *commands[]) {
 int fd[2];
 int in = 0;
 int out = 1;

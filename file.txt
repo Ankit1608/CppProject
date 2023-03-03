@@ -1,3 +1,7 @@
+.
+..
+.git
+.vscode
 file.txt
 mymtimes.c
 mytime.c
