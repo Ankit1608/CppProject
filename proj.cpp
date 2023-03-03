@@ -16,7 +16,7 @@ void execute_pipeline(char *commands[], int n_commands);
 
 char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH]);
 
-char** removeExtraWhiteSpaces(char** commands, int numberOfCommands);
+char** removeExtraWhiteSpaces(char** commands);
 
 
 int numberOfCommands=0;
@@ -68,25 +68,42 @@ int main() {
 
 char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH])
 {
-    // get seperate commands from the given Input
     char** commands = new char*[MAX_COMMANDS];
-    char *token = strtok(commandInput, "|");
-        int i = 0;
-        while (token != nullptr) {
-            commands[i] = token;
-            i++;
-            token = strtok(nullptr, "|");
-            
+    int i = 0;
+    int j = 0;
+    // iterate through the command input and split on the pipe character
+    while (commandInput[j] != '\0') {
+        int k = j;
+        while (commandInput[k] != '\0' && commandInput[k] != '|') {
+            k++;
         }
-        numberOfCommands = i;
-        commands = removeExtraWhiteSpaces(commands,i);
-        return commands;
-
+        if (k > j) {
+            // allocate memory for the command string
+            commands[i] = new char[k - j + 1];
+            // copy the command string to the allocated memory
+            strncpy(commands[i], commandInput + j, k - j);
+            commands[i][k - j] = '\0';
+            i++;
+        }
+        if (commandInput[k] == '|') {
+            j = k + 1;
+        } else {
+            j = k;
+        }
+    }
+    // set the remaining elements of the commands array to null
+    for (int k = i; k < MAX_COMMANDS; k++) {
+        commands[k] = nullptr;
+    }
+    numberOfCommands = i;
+    commands = removeExtraWhiteSpaces(commands);
+    return commands;
 }
 
 
 
-char** removeExtraWhiteSpaces(char** commands, int numberOfCommands)
+
+char** removeExtraWhiteSpaces(char** commands)
 {
     char** result = new char*[numberOfCommands];
     for (int i = 0; i < numberOfCommands; i++) {
