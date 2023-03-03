@@ -7,7 +7,7 @@
 #include <signal.h>
 
 #define MAX_COMMANDS 10
-#define MAX_COMMAND_LENGTH 100
+#define MAX_COMMAND_LENGTH 80
 #define MAX_PIPE_COMMANDS 10
 
 void execute_pipeline(char *commands[], int n_commands);
