@@ -129,92 +129,85 @@ char** removeExtraWhiteSpaces(char** commands)
 
 
 void execute_pipeline(char *commands[]) {
-    int fd[2];
-    int in = 0;
-    int out = 1;
-    pid_t pid;
-    int i = 0;
+int fd[2];
+int in = 0;
+int out = 1;
+for (int i = 0; i < numberOfCommands; i++) {
+    if (pipe(fd) < 0) {
+        fprintf(stderr, "Pipe failed\n");
+        exit(EXIT_FAILURE);
+    }
+
     char *args[MAX_COMMANDS];
     int arg_index = 0;
     int redirect_in = 0;
     int redirect_out = 0;
-    char *input_file;
-    char *output_file;
+    char *input_file = nullptr;
+    char *output_file = nullptr;
 
-    while (i < numberOfCommands) {
-        if (pipe(fd) < 0) {
-            fprintf(stderr, "Pipe failed\n");
-            exit(EXIT_FAILURE);
+    // Parse command arguments
+    char *token = strtok(commands[i], " ");
+    while (token != nullptr) {
+        if (strcmp(token, "<") == 0) {
+            redirect_in = 1;
+            input_file = strtok(nullptr, " ");
+        } else if (strcmp(token, ">") == 0) {
+            redirect_out = 1;
+            output_file = strtok(nullptr, " ");
+        } else {
+            args[arg_index++] = token;
         }
+        token = strtok(nullptr, " ");
+    }
+    args[arg_index] = nullptr;
 
-        arg_index = 0;
-        redirect_in = 0;
-        redirect_out = 0;
-        input_file = nullptr;
-        output_file = nullptr;
-
-        // Parse command arguments
-        char *token = strtok(commands[i], " ");
-        while (token != nullptr) {
-            if (strcmp(token, "<") == 0) {
-                redirect_in = 1;
-                input_file = strtok(nullptr, " ");
-            } else if (strcmp(token, ">") == 0) {
-                redirect_out = 1;
-                output_file = strtok(nullptr, " ");
-            } else {
-                args[arg_index++] = token;
-            }
-            token = strtok(nullptr, " ");
-        }
-        args[arg_index] = nullptr;
-
-        // Fork a child process to execute the command
-        if ((pid = fork()) == -1) {
-            fprintf(stderr, "Fork failed\n");
-            exit(EXIT_FAILURE);
-        } else if (pid == 0) {
-            if (redirect_in) {
-                int in_fd = open(input_file, O_RDONLY);
-                if (in_fd < 0) {
-                    fprintf(stderr, "Failed to open input file\n");
-                    exit(EXIT_FAILURE);
-                }
-                dup2(in_fd, STDIN_FILENO);
-                close(in_fd);
-            } else if (in != 0) {
-                dup2(in, STDIN_FILENO);
-                close(in);
-            }
-
-            if (redirect_out) {
-                int out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-                if (out_fd < 0) {
-                    fprintf(stderr, "Failed to open output file\n");
-                    exit(EXIT_FAILURE);
-                }
-                dup2(out_fd, STDOUT_FILENO);
-                close(out_fd);
-            } else if (i < numberOfCommands - 1) {
-                dup2(fd[1], STDOUT_FILENO);
-                close(fd[1]);
-            }
-
-            if (execvp(args[0], args) == -1) {
-                fprintf(stderr, "Failed to execute command\n");
+    // Fork a child process to execute the command
+    pid_t pid = fork();
+    if (pid == -1) {
+        fprintf(stderr, "Fork failed\n");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) {
+        // Child process
+        if (redirect_in) {
+            int in_fd = open(input_file, O_RDONLY);
+            if (in_fd < 0) {
+                fprintf(stderr, "Failed to open input file\n");
                 exit(EXIT_FAILURE);
             }
-        } else {
-            wait(NULL);
-
-            if (in != 0) {
-                close(in);
-            }
-            close(fd[1]);
-            in = fd[0];
-            out = fd[1];
+            dup2(in_fd, STDIN_FILENO);
+            close(in_fd);
+        } else if (in != 0) {
+            dup2(in, STDIN_FILENO);
+            close(in);
         }
 
-        i++;
+        if (redirect_out) {
+            int out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+            if (out_fd < 0) {
+                fprintf(stderr, "Failed to open output file\n");
+                exit(EXIT_FAILURE);
+            }
+            dup2(out_fd, STDOUT_FILENO);
+            close(out_fd);
+        } else if (i < numberOfCommands - 1) {
+            dup2(fd[1], STDOUT_FILENO);
+            close(fd[1]);
+        }
+
+        execvp(args[0], args);
+        fprintf(stderr, "Failed to execute command\n");
+        exit(EXIT_FAILURE);
+    } else {
+        // Parent process
+        wait(NULL);
+
+        if (in != 0) {
+            close(in);
+        }
+        close(fd[1]);
+        in = fd[0];
+        out = fd[1];
     }
+}
+
 }

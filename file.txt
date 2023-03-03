@@ -1,0 +1,12 @@
+.
+..
+.git
+.vscode
+file.txt
+mymtimes.c
+mytime.c
+mytimeout.cpp
+mytree.c
+proj
+proj.cpp
+proj.dSYM
