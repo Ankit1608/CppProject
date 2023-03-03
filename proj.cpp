@@ -12,7 +12,7 @@ using namespace std;
 #define MAX_COMMAND_LENGTH 80
 #define MAX_PIPE_COMMANDS 10
 
-void execute_pipeline(char *commands[], int n_commands);
+void execute_pipeline(char *commands[]);
 
 char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH]);
 
@@ -26,6 +26,7 @@ int main() {
     char commandInput[MAX_COMMAND_LENGTH];
 
     X:
+        numberOfCommands=0;
         cout << "$ ";
         cin.getline(commandInput, MAX_COMMAND_LENGTH);
         
@@ -59,7 +60,7 @@ int main() {
         
         commands = getSeperateCommands(commandInput);
 
-        execute_pipeline(commands, numberOfCommands);
+        execute_pipeline(commands);
 
     goto X;
 
@@ -71,16 +72,13 @@ char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH])
     char** commands = new char*[MAX_COMMANDS];
     int i = 0;
     int j = 0;
-    // iterate through the command input and split on the pipe character
     while (commandInput[j] != '\0') {
         int k = j;
         while (commandInput[k] != '\0' && commandInput[k] != '|') {
             k++;
         }
         if (k > j) {
-            // allocate memory for the command string
             commands[i] = new char[k - j + 1];
-            // copy the command string to the allocated memory
             strncpy(commands[i], commandInput + j, k - j);
             commands[i][k - j] = '\0';
             i++;
@@ -91,7 +89,7 @@ char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH])
             j = k;
         }
     }
-    // set the remaining elements of the commands array to null
+    
     for (int k = i; k < MAX_COMMANDS; k++) {
         commands[k] = nullptr;
     }
@@ -111,7 +109,6 @@ char** removeExtraWhiteSpaces(char** commands)
         char* trimmed = new char[strlen(command) + 1];
         int j = 0;
         bool leadingSpace = true;
-        // remove leading white spaces
         for (int k = 0; k < strlen(command); k++) {
             if (command[k] == ' ' && leadingSpace) {
                 continue;
@@ -121,7 +118,6 @@ char** removeExtraWhiteSpaces(char** commands)
             trimmed[j++] = command[k];
         }
         trimmed[j] = '\0';
-        // remove trailing white spaces
         int end = strlen(trimmed) - 1;
         while (end >= 0 && (trimmed[end] == ' ' || trimmed[end] == '\n' || trimmed[end] == '\r')) {
             trimmed[end--] = '\0';
@@ -132,7 +128,7 @@ char** removeExtraWhiteSpaces(char** commands)
 }
 
 
-void execute_pipeline(char *commands[], int n_commands) {
+void execute_pipeline(char *commands[]) {
     int fd[2];
     int in = 0;
     int out = 1;
@@ -145,7 +141,7 @@ void execute_pipeline(char *commands[], int n_commands) {
     char *input_file;
     char *output_file;
 
-    while (i < n_commands) {
+    while (i < numberOfCommands) {
         if (pipe(fd) < 0) {
             fprintf(stderr, "Pipe failed\n");
             exit(EXIT_FAILURE);
@@ -199,7 +195,7 @@ void execute_pipeline(char *commands[], int n_commands) {
                 }
                 dup2(out_fd, STDOUT_FILENO);
                 close(out_fd);
-            } else if (i < n_commands - 1) {
+            } else if (i < numberOfCommands - 1) {
                 dup2(fd[1], STDOUT_FILENO);
                 close(fd[1]);
             }
