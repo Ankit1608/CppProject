@@ -9,4 +9,4 @@ mytimeout.cpp
 mytree.c
 proj
 proj.cpp
-proj.dSYM
+test
