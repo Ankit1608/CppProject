@@ -16,16 +16,14 @@ void execute_pipeline(char *commands[], int n_commands);
 
 char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH]);
 
-char** removeExtraWhiteSpaces(char *commands[], int numberOfCommands);
+char** removeExtraWhiteSpaces(char** commands, int numberOfCommands);
 
-int getNumberOfCommands(char commandInput[MAX_COMMAND_LENGTH]);
 
 int numberOfCommands=0;
 
 int main() {
     char** commands = new char*[MAX_COMMANDS];
     char commandInput[MAX_COMMAND_LENGTH];
-    int i,j;
 
     X:
         cout << "$ ";
@@ -59,29 +57,7 @@ int main() {
         }
 
         
-
         commands = getSeperateCommands(commandInput);
-
-
-        
-        
-        
-
-        for (i = 0; i < numberOfCommands; i++) {
-            char *command = commands[i];
-            while (*command == ' ') {
-                command++;
-            }
-            j = strlen(command) - 1;
-            while (command[j] == '\n' || command[j] == '\r' || command[j] == ' ') {
-                command[j] = '\0';
-                j--;
-            }
-            commands[i] = command;
-            
-        }
-
-        // commands = removeExtraWhiteSpaces(commands,numberOfCommands);
 
         execute_pipeline(commands, numberOfCommands);
 
@@ -103,45 +79,41 @@ char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH])
             
         }
         numberOfCommands = i;
+        commands = removeExtraWhiteSpaces(commands,i);
         return commands;
 
 }
 
-int getNumberOfCommands(char commandInput[MAX_COMMAND_LENGTH])
-{
-    // get number of commands with respect to | in the given input
-    char** commands = new char*[MAX_COMMANDS];
-    char *token = strtok(commandInput, "|");
-        int i = 0;
-        while (token != nullptr) {
-            commands[i] = token;
-            i++;
-            cout<<" -- i -- "<<i<<"       ";
-            token = strtok(nullptr, "|");
-            
-        }
-        return i;
 
-}
 
-char** removeExtraWhiteSpaces(char *commands[],int numberOfCommands)
+char** removeExtraWhiteSpaces(char** commands, int numberOfCommands)
 {
-    int j;
-    //removing extra white spaces from the commands
+    char** result = new char*[numberOfCommands];
     for (int i = 0; i < numberOfCommands; i++) {
-            char *command = commands[i];
-            while (*command == ' ') {
-                command++;
+        char* command = commands[i];
+        char* trimmed = new char[strlen(command) + 1];
+        int j = 0;
+        bool leadingSpace = true;
+        // remove leading white spaces
+        for (int k = 0; k < strlen(command); k++) {
+            if (command[k] == ' ' && leadingSpace) {
+                continue;
+            } else {
+                leadingSpace = false;
             }
-            j = strlen(command) - 1;
-            while (command[j] == '\n' || command[j] == '\r' || command[j] == ' ') {
-                command[j] = '\0';
-                j--;
-            }
-            commands[i] = command;
+            trimmed[j++] = command[k];
         }
-        return commands;
+        trimmed[j] = '\0';
+        // remove trailing white spaces
+        int end = strlen(trimmed) - 1;
+        while (end >= 0 && (trimmed[end] == ' ' || trimmed[end] == '\n' || trimmed[end] == '\r')) {
+            trimmed[end--] = '\0';
+        }
+        result[i] = trimmed;
+    }
+    return result;
 }
+
 
 void execute_pipeline(char *commands[], int n_commands) {
     int fd[2];
