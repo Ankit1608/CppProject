@@ -18,6 +18,55 @@ char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH]);
 
 char** removeExtraWhiteSpaces(char** commands);
 
+bool runInternalCommands(char commandInput[MAX_COMMAND_LENGTH]) {
+    // Define the internal command strings.
+    const char* EXIT_COMMAND = "myexit";
+    const char* PWD_COMMAND = "mypwd";
+    const char* CD_COMMAND = "mycd";
+
+   
+    if (strcmp(commandInput, EXIT_COMMAND) == 0) {
+        exit(EXIT_SUCCESS);
+    }
+
+    
+    if (strcmp(commandInput, PWD_COMMAND) == 0) {
+        char currentWorkingDirectory[MAX_COMMAND_LENGTH];
+        if (getcwd(currentWorkingDirectory, sizeof(currentWorkingDirectory)) != nullptr) {
+            std::cout << currentWorkingDirectory << std::endl;
+            return true;
+        } else {
+            std::cerr << "Error: Could not get the current working directory." << std::endl;
+            return false;
+        }
+    }
+
+    
+    if (strncmp(commandInput, CD_COMMAND, strlen(CD_COMMAND)) == 0) {
+        
+        char* argument = strtok(commandInput + strlen(CD_COMMAND), " \n\r");
+
+        
+        if (argument == nullptr) {
+            std::cerr << "Error: Missing argument for cd command." << std::endl;
+            return false;
+        }
+
+        
+        if (chdir(argument) == -1) {
+            perror("Error");
+            return false;
+        } else {
+            std::cout << "Changed directory to " << argument << std::endl;
+            return true;
+        }
+    }
+
+   
+    return false;
+}
+
+
 
 int numberOfCommands=0;
 
@@ -29,31 +78,12 @@ int main() {
         numberOfCommands=0;
         cout << "$ ";
         cin.getline(commandInput, MAX_COMMAND_LENGTH);
-        
-       if (strcmp(commandInput, "myexit") == 0) {
-            exit(EXIT_SUCCESS);
-        }
-        else if (strcmp(commandInput, "mypwd") == 0) {
-            char cwd[1024];
-            if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-                cout << cwd << endl;
-            } else {
-                perror("getcwd() error");
-            }
+
+        if(runInternalCommands(commandInput))
+        {
             goto X;
         }
-        else if (strncmp(commandInput, "mycd", 4) == 0) {
-            char *path = strtok(commandInput + 4, " \n\r");
-            if (path == NULL) {
-                cerr << "mycd: missing argument\n";
-                goto X;
-            }
-            if (chdir(path) != 0) {
-                perror("mycd");
-            }
-            goto X;
-        }
-        else if (cin.eof()) {
+        if (cin.eof()) {
             exit(EXIT_SUCCESS);
         }
 
