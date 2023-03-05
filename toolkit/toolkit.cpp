@@ -70,23 +70,23 @@ void setEnvironmentPath(char *pathGiven,char*pathName){
 
 char *new_path =pathGiven;
 
-    // Get the current value of PATH
+    
     char *old_path = getenv(pathName);
 
-    // Allocate memory for a new string that will contain both the old and new paths
+    
     char *path = (char*)malloc(strlen(old_path) + strlen(new_path) + 2);
 
-    // Copy the old path to the new string
+    
     strcpy(path, old_path);
 
-    // Add the new path to the new string
+    
     strcat(path, ":");
     strcat(path, new_path);
 
-    // Set the PATH environment variable to the new string
-    setenv("PATH", path, 1);
+    
+    setenv(pathName, path, 1);
 
-    // Free the allocated memory
+    
     free(path);
 }
 
