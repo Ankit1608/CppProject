@@ -18,6 +18,55 @@ char** getSeperateCommands(char commandInput[MAX_COMMAND_LENGTH]);
 
 char** removeExtraWhiteSpaces(char** commands);
 
+bool runInternalCommands(char commandInput[MAX_COMMAND_LENGTH]) {
+    // Define the internal command strings.
+    const char* EXIT_COMMAND = "myexit";
+    const char* PWD_COMMAND = "mypwd";
+    const char* CD_COMMAND = "mycd";
+
+   
+    if (strcmp(commandInput, EXIT_COMMAND) == 0) {
+        exit(EXIT_SUCCESS);
+    }
+
+    
+    if (strcmp(commandInput, PWD_COMMAND) == 0) {
+        char currentWorkingDirectory[MAX_COMMAND_LENGTH];
+        if (getcwd(currentWorkingDirectory, sizeof(currentWorkingDirectory)) != nullptr) {
+            std::cout << currentWorkingDirectory << std::endl;
+            return true;
+        } else {
+            std::cerr << "Error: Could not get the current working directory." << std::endl;
+            return false;
+        }
+    }
+
+    
+    if (strncmp(commandInput, CD_COMMAND, strlen(CD_COMMAND)) == 0) {
+        
+        char* argument = strtok(commandInput + strlen(CD_COMMAND), " \n\r");
+
+        
+        if (argument == nullptr) {
+            std::cerr << "Error: Missing argument for cd command." << std::endl;
+            return false;
+        }
+
+        
+        if (chdir(argument) == -1) {
+            perror("Error");
+            return false;
+        } else {
+            std::cout << "Changed directory to " << argument << std::endl;
+            return true;
+        }
+    }
+
+   
+    return false;
+}
+
+
 
 int numberOfCommands=0;
 
@@ -29,31 +78,12 @@ int main() {
         numberOfCommands=0;
         cout << "$ ";
         cin.getline(commandInput, MAX_COMMAND_LENGTH);
-        
-       if (strcmp(commandInput, "myexit") == 0) {
-            exit(EXIT_SUCCESS);
-        }
-        else if (strcmp(commandInput, "mypwd") == 0) {
-            char cwd[1024];
-            if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-                cout << cwd << endl;
-            } else {
-                perror("getcwd() error");
-            }
+
+        if(runInternalCommands(commandInput))
+        {
             goto X;
         }
-        else if (strncmp(commandInput, "mycd", 4) == 0) {
-            char *path = strtok(commandInput + 4, " \n\r");
-            if (path == NULL) {
-                cerr << "mycd: missing argument\n";
-                goto X;
-            }
-            if (chdir(path) != 0) {
-                perror("mycd");
-            }
-            goto X;
-        }
-        else if (cin.eof()) {
+        if (cin.eof()) {
             exit(EXIT_SUCCESS);
         }
 
@@ -130,85 +160,88 @@ char** removeExtraWhiteSpaces(char** commands)
 
 
 void runPipeCommands(char *commands[]) {
-int fd[2];
-int in = 0;
-int out = 1;
-for (int i = 0; i < numberOfCommands; i++) {
-    if (pipe(fd) < 0) {
-        fprintf(stderr, "Pipe failed\n");
-        exit(EXIT_FAILURE);
-    }
+    int fd[2];
+    int in = 0;
+    int out = 1;
+    const char *delimiter = " ";
 
-    char *args[MAX_COMMANDS];
-    int arg_index = 0;
-    int redirect_in = 0;
-    int redirect_out = 0;
-    char *input_file = nullptr;
-    char *output_file = nullptr;
+    for (int i = 0; i < numberOfCommands; i++) {
+        if (pipe(fd) < 0) {
+            std::cerr << "Pipe failed\n";
+            exit(EXIT_FAILURE);
+        }
 
-    // Parse command arguments
-    char *token = strtok(commands[i], " ");
-    while (token != nullptr) {
-        if (strcmp(token, "<") == 0) {
-            redirect_in = 1;
-            input_file = strtok(nullptr, " ");
-        } else if (strcmp(token, ">") == 0) {
-            redirect_out = 1;
-            output_file = strtok(nullptr, " ");
+        char *args[MAX_COMMANDS];
+        int argIndex = 0;
+        int redirectIn = 0;
+        int redirectOut = 0;
+        char *inputFile = nullptr;
+        char *outputFile = nullptr;
+
+        // Parse command arguments
+        char *command = commands[i];
+        char *valueTokenIndex = strtok(command, delimiter);
+        while (valueTokenIndex != nullptr) {
+            if (std::string(valueTokenIndex) == "<") {
+                redirectIn = 1;
+                valueTokenIndex = strtok(nullptr, delimiter);
+                inputFile = valueTokenIndex;
+            } else if (std::string(valueTokenIndex) == ">") {
+                redirectOut = 1;
+                valueTokenIndex = strtok(nullptr, delimiter);
+                outputFile = valueTokenIndex;
+            } else {
+                args[argIndex++] = valueTokenIndex;
+            }
+            valueTokenIndex = strtok(nullptr, delimiter);
+        }
+        args[argIndex] = nullptr;
+
+        // Fork a child process to execute the command
+        pid_t pid = fork();
+        if (pid == -1) {
+            std::cerr << "Fork failed\n";
+            exit(EXIT_FAILURE);
+        } else if (pid == 0) {
+            // Child process
+            if (redirectIn) {
+                int in_fd = open(inputFile, O_RDONLY);
+                if (in_fd < 0) {
+                    std::cerr << "Failed to open input file\n";
+                    exit(EXIT_FAILURE);
+                }
+                dup2(in_fd, STDIN_FILENO);
+                close(in_fd);
+            } else if (in != 0) {
+                dup2(in, STDIN_FILENO);
+                close(in);
+            }
+
+            if (redirectOut) {
+                int out_fd = open(outputFile, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+                if (out_fd < 0) {
+                    std::cerr << "Failed to open output file\n";
+                    exit(EXIT_FAILURE);
+                }
+                dup2(out_fd, STDOUT_FILENO);
+                close(out_fd);
+            } else if (i < numberOfCommands - 1) {
+                dup2(fd[1], STDOUT_FILENO);
+                close(fd[1]);
+            }
+            execvp(args[0], args);
+            std::cerr << "Failed to execute command\n";
+            exit(EXIT_FAILURE);
         } else {
-            args[arg_index++] = token;
-        }
-        token = strtok(nullptr, " ");
-    }
-    args[arg_index] = nullptr;
+            // Parent process
+            wait(NULL);
 
-    // Fork a child process to execute the command
-    pid_t pid = fork();
-    if (pid == -1) {
-        fprintf(stderr, "Fork failed\n");
-        exit(EXIT_FAILURE);
-    } else if (pid == 0) {
-        // Child process
-        if (redirect_in) {
-            int in_fd = open(input_file, O_RDONLY);
-            if (in_fd < 0) {
-                fprintf(stderr, "Failed to open input file\n");
-                exit(EXIT_FAILURE);
+            if (in != 0) {
+                close(in);
             }
-            dup2(in_fd, STDIN_FILENO);
-            close(in_fd);
-        } else if (in != 0) {
-            dup2(in, STDIN_FILENO);
-            close(in);
-        }
-
-        if (redirect_out) {
-            int out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-            if (out_fd < 0) {
-                fprintf(stderr, "Failed to open output file\n");
-                exit(EXIT_FAILURE);
-            }
-            dup2(out_fd, STDOUT_FILENO);
-            close(out_fd);
-        } else if (i < numberOfCommands - 1) {
-            dup2(fd[1], STDOUT_FILENO);
             close(fd[1]);
+            in = fd[0];
+            out = fd[1];
         }
-
-        execvp(args[0], args);
-        fprintf(stderr, "Failed to execute command\n");
-        exit(EXIT_FAILURE);
-    } else {
-        // Parent process
-        wait(NULL);
-
-        if (in != 0) {
-            close(in);
-        }
-        close(fd[1]);
-        in = fd[0];
-        out = fd[1];
     }
-}
-
 }
